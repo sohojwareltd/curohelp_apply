@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -135,7 +136,7 @@ class CandidateApplicationController extends Controller
             // Final step - mark as submitted
             return $this->finalize($request, $candidate, $candidateUuid);
         } catch (\Exception $e) {
-            \Log::error('Application submission failed', [
+            Log::error('Application submission failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'step' => $step ?? null,
@@ -162,7 +163,7 @@ class CandidateApplicationController extends Controller
                
         // Check if candidate has required fields
         if (empty($candidate->email)) {
-            \Log::error('Cannot finalize application: candidate missing email', [
+            Log::error('Cannot finalize application: candidate missing email', [
                 'uuid' => $candidateUuid,
                 'candidate_id' => $candidate->id
             ]);
@@ -206,7 +207,7 @@ class CandidateApplicationController extends Controller
         $portalResult = $this->sendToPortal($candidate);
 
         if (!($portalResult['ok'] ?? false)) {
-            \Log::warning('Portal push failed (submission still successful locally)', $portalResult);
+            Log::warning('Portal push failed (submission still successful locally)', $portalResult);
         }
 
         // For API requests, return JSON response with proper route URL
@@ -253,7 +254,7 @@ class CandidateApplicationController extends Controller
                 ])->values(),
             ];
 
-            \Log::info('Sending application to portal', [
+            Log::info('Sending application to portal', [
                 'url' => $fullUrl,
                 'candidate_id' => $candidate->id,
                 'candidate_uuid' => $candidate->uuid,
@@ -268,7 +269,7 @@ class CandidateApplicationController extends Controller
             $response = $client->post($fullUrl, $payload);
 
             if (! $response->successful()) {
-                \Log::error('Portal API error', [
+                Log::error('Portal API error', [
                     'url' => $fullUrl,
                     'status' => $response->status(),
                     'body' => $response->body(),
@@ -281,7 +282,7 @@ class CandidateApplicationController extends Controller
                 ];
             }
 
-            \Log::info('Application sent to portal successfully', [
+            Log::info('Application sent to portal successfully', [
                 'status' => $response->status(),
                 'candidate_id' => $candidate->id,
             ]);
@@ -291,7 +292,7 @@ class CandidateApplicationController extends Controller
                 'status' => $response->status(),
             ];
         } catch (\Throwable $e) {
-            \Log::error('Portal send exception', [
+            Log::error('Portal send exception', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
