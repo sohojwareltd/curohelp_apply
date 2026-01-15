@@ -847,7 +847,7 @@
             </div>
         </div>
 
-        <form id="applicationForm" method="POST" action="{{ url('/api/apply/submit') }}" enctype="multipart/form-data">
+        <form id="applicationForm" method="POST" action="{{ $portalApiUrl }}/api/apply/submit" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="step" value="{{ $step }}">
             <input type="hidden" name="navigate" id="navigate" value="">
@@ -1125,17 +1125,49 @@
                         <div class="col-12">
                             <div class="form-group">
                                 <label>Working Hours Preference</label>
-                                <div class="row g-4">
-                                    @foreach ($workingHoursOptions as $option)
-                                        <div class="col-md-3">
-                                            <label class="checkbox-item">
-                                                <input type="checkbox" name="working_hours[]"
-                                                    value="{{ $option }}"
-                                                    {{ in_array($option, old('working_hours', $get(5, 'working_hours', []))) ? 'checked' : '' }}>
-                                                <span>{{ ucwords(str_replace('_', ' ', $option)) }}</span>
-                                            </label>
-                                        </div>
-                                    @endforeach
+                                <div class="row g-4" data-name="working-hours-container">
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="rota">
+                                            <span>Rota</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="day">
+                                            <span>Day</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="night">
+                                            <span>Night</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="full_time">
+                                            <span>Full Time</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="part_time">
+                                            <span>Part Time</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="sessional">
+                                            <span>Sessional</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" name="working_hours[]" value="temporary">
+                                            <span>Temporary</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1390,21 +1422,9 @@
                             <a href="{{ route('apply', ['step' => 7, 'candidate' => $candidateUuid]) }}" class="review-card"
                                 style="text-decoration: none; color: inherit;">
                                 <h3>Documents</h3>
-                                @php
-                                    $docFields = [
-                                        'photo' => 'Photo',
-                                        'intro_video' => 'Intro Video',
-                                        'cv' => 'CV / Resume',
-                                        'certificates' => 'Certificates',
-                                        'training_documents' => 'Training Documents',
-                                        'security_checks' => 'Security Checks',
-                                    ];
-                                @endphp
-                                @foreach ($docFields as $key => $label)
-                                    @php $uploaded = isset($state[7][$key]); @endphp
-                                    <p class="muted">{{ $uploaded ? '✓' : '•' }} {{ $label }}
-                                        {{ $uploaded ? '(Uploaded)' : '(Not uploaded)' }}</p>
-                                @endforeach
+                                <div id="step8-documents-container">
+                                    <p class="muted" style="font-size: 12px;">Loading documents...</p>
+                                </div>
                             </a>
                         </div>
                     </div>
@@ -1447,129 +1467,680 @@
 
         // Initialize FilePond after all scripts load
         window.addEventListener('load', function() {
-            // Always call our own server to avoid CORS issues; backend forwards to portal
-            var API_BASE = window.location.origin + '/api/apply';
+            // Call Portal API directly - use dynamic URL from controller
+            var API_BASE = '{{ $portalApiUrl }}/api/apply';
             var WITH_CREDENTIALS = false;
+            
+            // Load options (roles, locations, countries) from API
+            fetch(API_BASE + '/options', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Options loaded:', data);
+                
+                // Populate roles (step 2)
+                if (data.roles && data.roles.length > 0) {
+                    const rolesContainer = document.querySelector('.row.g-4');
+                    if (rolesContainer && rolesContainer.closest('.form-section')?.querySelector('h2')?.textContent.includes('Roles')) {
+                        rolesContainer.innerHTML = '';
+                        data.roles.forEach(role => {
+                            const roleHtml = `
+                                <div class="col-md-3">
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" name="roles[]" value="${role.id}">
+                                        <span>${role.name}</span>
+                                    </label>
+                                </div>
+                            `;
+                            rolesContainer.insertAdjacentHTML('beforeend', roleHtml);
+                        });
+                    }
+                }
+                
+                // Populate locations (step 4)
+                if (data.locations && data.locations.length > 0) {
+                    const ukGrid = document.getElementById('ukGrid');
+                    const intlGrid = document.getElementById('intlGrid');
+                    
+                    if (ukGrid) {
+                        ukGrid.innerHTML = '';
+                        data.locations.filter(loc => loc.type === 'uk').forEach(loc => {
+                            const locHtml = `
+                                <div class="col-md-3">
+                                    <label class="checkbox-item" data-group="uk" data-name="${loc.name.toLowerCase()}">
+                                        <input type="checkbox" name="locations[]" value="${loc.id}">
+                                        <span>${loc.name}</span>
+                                    </label>
+                                </div>
+                            `;
+                            ukGrid.insertAdjacentHTML('beforeend', locHtml);
+                        });
+                    }
+                    
+                    if (intlGrid) {
+                        intlGrid.innerHTML = '';
+                        data.locations.filter(loc => loc.type === 'international').forEach(loc => {
+                            const locHtml = `
+                                <div class="col-md-3">
+                                    <label class="checkbox-item" data-group="intl" data-name="${loc.name.toLowerCase()}">
+                                        <input type="checkbox" name="locations[]" value="${loc.id}">
+                                        <span>${loc.name}</span>
+                                    </label>
+                                </div>
+                            `;
+                            intlGrid.insertAdjacentHTML('beforeend', locHtml);
+                        });
+                    }
+                    
+                    // Setup search filter after locations loaded
+                    const locationSearch = document.getElementById('locationSearch');
+                    if (locationSearch) {
+                        const items = [
+                            ...(ukGrid ? ukGrid.querySelectorAll('[data-name]') : []),
+                            ...(intlGrid ? intlGrid.querySelectorAll('[data-name]') : []),
+                        ];
+                        locationSearch.addEventListener('input', function(e) {
+                            const q = e.target.value.trim().toLowerCase();
+                            items.forEach(el => {
+                                const name = el.getAttribute('data-name') || '';
+                                el.style.display = name.includes(q) ? '' : 'none';
+                            });
+                        });
+                    }
+                }
+                
+                // Populate countries (step 1)
+                if (data.countries && data.countries.length > 0) {
+                    const countrySelect = document.querySelector('select[name="country"]');
+                    if (countrySelect) {
+                        // Keep the empty option
+                        const emptyOption = countrySelect.querySelector('option[value=""]');
+                        countrySelect.innerHTML = emptyOption ? emptyOption.outerHTML : '<option value="">-- Select Country --</option>';
+                        
+                        // Sort countries: UK first, then alphabetically
+                        const sorted = data.countries.sort((a, b) => {
+                            if (a.name === 'United Kingdom') return -1;
+                            if (b.name === 'United Kingdom') return 1;
+                            return a.name.localeCompare(b.name);
+                        });
+                        
+                        sorted.forEach(country => {
+                            const option = document.createElement('option');
+                            option.value = country.name;
+                            option.textContent = country.name;
+                            countrySelect.appendChild(option);
+                        });
+                        
+                        // Reinitialize Select2 after jQuery is loaded (it's loaded later in the page)
+                        setTimeout(() => {
+                            if (window.jQuery && window.jQuery.fn.select2) {
+                                try {
+                                    window.jQuery(countrySelect).select2('destroy');
+                                } catch(e) {}
+                                window.jQuery(countrySelect).select2({
+                                    placeholder: '-- Select Country --',
+                                    allowClear: true,
+                                    width: '100%'
+                                });
+                            }
+                        }, 500);
+                    }
+                }
+                
+                // Populate working hours options (step 5) - Static options
+                const workingHoursOptions = ['Rota', 'Day', 'Night', 'Full Time', 'Part Time', 'Seasonal', 'Temporary'];
+                const workingHoursContainer = document.querySelector('[data-name="working-hours-container"]');
+                
+                if (workingHoursContainer) {
+                    workingHoursContainer.innerHTML = '';
+                    workingHoursOptions.forEach(option => {
+                        const value = option.toLowerCase().replace(/\s+/g, '_');
+                        const hoursHtml = `
+                            <div class="col-md-3">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="working_hours[]" value="${value}">
+                                    <span>${option}</span>
+                                </label>
+                            </div>
+                        `;
+                        workingHoursContainer.insertAdjacentHTML('beforeend', hoursHtml);
+                    });
+                }
+                
+                // Load previously saved data for ALL steps
+                const candidateUuid = document.querySelector('input[name="candidate"]')?.value;
+                window.currentStep = document.querySelector('input[name="step"]')?.value;
+                console.log('Current step:', window.currentStep, 'Candidate:', candidateUuid);
+                
+                if (candidateUuid) {
+                    // Wait a bit for dynamic content to render, then load state
+                    setTimeout(() => {
+                        fetch(API_BASE + '/state?candidate=' + candidateUuid, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    })
+                    .then(response => {
+                        console.log('State response status:', response.status);
+                        return response.json();
+                    })
+                    .then(stateData => {
+                        console.log('Full state response:', stateData);
+                        
+                        // Data is nested under "state" property in the response
+                        const applicationState = stateData.state || {};
+                        const step7Data = applicationState[7] || applicationState["7"] || {};
+                        console.log('Step 7 data:', step7Data);
+                        console.log('Step 7 data keys:', Object.keys(step7Data));
+                        
+                        const fileFields = ['photo', 'intro_video', 'cv', 'certificates', 'training_documents', 'security_checks'];
+                        
+                        fileFields.forEach(fieldName => {
+                            const fileData = step7Data[fieldName];
+                            console.log(`Checking ${fieldName}:`, fileData);
+                            
+                            if (fileData) {
+                                // Extract path and name from object or use string directly
+                                const filePath = typeof fileData === 'object' ? fileData.path : fileData;
+                                const fileName = typeof fileData === 'object' ? fileData.original_name : fieldName;
+                                console.log(`${fieldName} path:`, filePath);
+                                
+                                if (filePath) {
+                                    // Set data attribute on the input for form submission
+                                    const input = document.getElementById(fieldName);
+                                    if (input) {
+                                        input.setAttribute('data-file-path', filePath);
+                                        console.log(`Set data-file-path on #${fieldName}`);
+                                    }
+                                    
+                                    // Load image preview if it's the photo field
+                                    if (fieldName === 'photo') {
+                                        let previewDiv = document.getElementById('photo_preview');
+                                        
+                                        // Create preview div if it doesn't exist
+                                        if (!previewDiv) {
+                                            console.log('Creating preview div...');
+                                            previewDiv = document.createElement('div');
+                                            previewDiv.id = 'photo_preview';
+                                            previewDiv.className = 'image-preview';
+                                            const photoInput = document.getElementById('photo');
+                                            if (photoInput && photoInput.parentElement) {
+                                                photoInput.parentElement.appendChild(previewDiv);
+                                            }
+                                        }
+                                        
+                                        if (previewDiv) {
+                                            const imageUrl = '{{ $portalApiUrl }}/storage/' + filePath;
+                                            previewDiv.innerHTML = `<img src="${imageUrl}" alt="Preview" style="max-width:100%; height:auto;">`;
+                                            previewDiv.style.display = 'block';
+                                            console.log('Loading image from:', imageUrl);
+                                        }
+                                    } else {
+                                        // For non-image files (cv, certificates, etc), show as downloadable link
+                                        const fileUrl = '{{ $portalApiUrl }}/storage/' + filePath;
+                                        const input = document.getElementById(fieldName);
+                                        if (input && input.parentElement) {
+                                            // Remove old link if exists
+                                            let oldLink = input.nextElementSibling;
+                                            while (oldLink && oldLink.className === 'file-download-link') {
+                                                oldLink.remove();
+                                                oldLink = input.nextElementSibling;
+                                            }
+                                            
+                                            // Create new link div
+                                            const linkDiv = document.createElement('div');
+                                            linkDiv.className = 'file-download-link';
+                                            linkDiv.style.marginTop = '8px';
+                                            linkDiv.innerHTML = `
+                                                <a href="${fileUrl}" target="_blank" style="
+                                                    display: inline-flex;
+                                                    align-items: center;
+                                                    gap: 8px;
+                                                    padding: 8px 12px;
+                                                    background: #f0f0f0;
+                                                    border-radius: 6px;
+                                                    text-decoration: none;
+                                                    color: #0066cc;
+                                                    font-size: 14px;
+                                                    border: 1px solid #ddd;
+                                                ">
+                                                    <span style="font-size: 16px;">📄</span>
+                                                    <span>${fileName}</span>
+                                                    <span style="font-size: 12px; color: #666;">(Click to view)</span>
+                                                </a>
+                                            `;
+                                            input.parentElement.insertBefore(linkDiv, input.nextElementSibling);
+                                            console.log(`File link created for ${fieldName}: ${fileUrl}`);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Populate form fields for steps 1-6
+                        if (window.currentStep <= 6) {
+                            // Step 1 - Personal Details
+                            if (applicationState[1]) {
+                                const step1 = applicationState[1];
+                                document.querySelector('input[name="first_name"]')?.setAttribute('value', step1.first_name || '');
+                                document.querySelector('input[name="last_name"]')?.setAttribute('value', step1.last_name || '');
+                                document.querySelector('input[name="email"]')?.setAttribute('value', step1.email || '');
+                                document.querySelector('input[name="phone"]')?.setAttribute('value', step1.phone || '');
+                                document.querySelector('input[name="nearest_city"]')?.setAttribute('value', step1.nearest_city || '');
+                                document.querySelector('input[name="postcode"]')?.setAttribute('value', step1.postcode || '');
+                                
+                                // Restore country using Select2
+                                if (step1.country) {
+                                    const countrySelect = document.querySelector('select[name="country"]');
+                                    if (countrySelect) {
+                                        if (window.jQuery && window.jQuery.fn.select2) {
+                                            window.jQuery(countrySelect).val(step1.country).trigger('change');
+                                        } else {
+                                            countrySelect.value = step1.country;
+                                        }
+                                    }
+                                }
+                                
+                                if (step1.driving_licence) document.querySelector('input[name="driving_licence"]')?.setAttribute('checked', 'checked');
+                                if (step1.own_car) document.querySelector('input[name="own_car"]')?.setAttribute('checked', 'checked');
+                                if (step1.valid_passport) document.querySelector('input[name="valid_passport"]')?.setAttribute('checked', 'checked');
+                            }
+                            
+                            // Step 2 - Roles
+                            if (applicationState[2] && applicationState[2].roles) {
+                                applicationState[2].roles.forEach(roleId => {
+                                    const checkbox = document.querySelector(`input[name="roles[]"][value="${roleId}"]`);
+                                    if (checkbox) checkbox.checked = true;
+                                });
+                            }
+                            
+                            // Step 3 - Preferences
+                            if (applicationState[3]) {
+                                const step3 = applicationState[3];
+                                
+                                // Restore select dropdowns
+                                if (step3.pets_preference) {
+                                    const petsSelect = document.querySelector('select[name="pets_preference"]');
+                                    if (petsSelect) petsSelect.value = step3.pets_preference;
+                                }
+                                
+                                if (step3.smokers_preference) {
+                                    const smokersSelect = document.querySelector('select[name="smokers_preference"]');
+                                    if (smokersSelect) smokersSelect.value = step3.smokers_preference;
+                                }
+                                
+                                if (step3.living_arrangement) {
+                                    const livingSelect = document.querySelector('select[name="living_arrangement"]');
+                                    if (livingSelect) livingSelect.value = step3.living_arrangement;
+                                }
+                                
+                                // Restore textarea
+                                const unwantedTextarea = document.querySelector('textarea[name="unwanted"]');
+                                if (unwantedTextarea && step3.unwanted) {
+                                    unwantedTextarea.value = step3.unwanted;
+                                }
+                            }
+                            
+                            // Step 4 - Locations
+                            if (applicationState[4] && applicationState[4].locations) {
+                                applicationState[4].locations.forEach(locId => {
+                                    const checkbox = document.querySelector(`input[name="locations[]"][value="${locId}"]`);
+                                    if (checkbox) checkbox.checked = true;
+                                });
+                            }
+                            
+                            // Step 5 - Remuneration
+                            if (applicationState[5]) {
+                                const step5 = applicationState[5];
+                                if (step5.employment_type) {
+                                    document.querySelector(`input[name="employment_type"][value="${step5.employment_type}"]`)?.setAttribute('checked', 'checked');
+                                }
+                                document.querySelector('input[name="salary_expectation_annual"]')?.setAttribute('value', step5.salary_expectation_annual || '');
+                                document.querySelector('input[name="salary_expectation_hourly"]')?.setAttribute('value', step5.salary_expectation_hourly || '');
+                                if (step5.working_hours && Array.isArray(step5.working_hours)) {
+                                    step5.working_hours.forEach(hours => {
+                                        const checkbox = document.querySelector(`input[name="working_hours[]"][value="${hours}"]`);
+                                        if (checkbox) checkbox.checked = true;
+                                    });
+                                }
+                            }
+                            
+                            // Step 6 - Experience & Profile
+                            if (applicationState[6]) {
+                                const step6 = applicationState[6];
+                                
+                                // Use .value instead of setAttribute for textarea
+                                const overviewTextarea = document.querySelector('textarea[name="overview"]');
+                                if (overviewTextarea && step6.overview) overviewTextarea.value = step6.overview;
+                                
+                                const skillsTextarea = document.querySelector('textarea[name="skills"]');
+                                if (skillsTextarea && step6.skills) skillsTextarea.value = step6.skills;
+                                
+                                const qualificationsTextarea = document.querySelector('textarea[name="qualifications"]');
+                                if (qualificationsTextarea && step6.qualifications) qualificationsTextarea.value = step6.qualifications;
+                                
+                                const trainingTextarea = document.querySelector('textarea[name="training"]');
+                                if (trainingTextarea && step6.training) trainingTextarea.value = step6.training;
+                                
+                                const dutiesTextarea = document.querySelector('textarea[name="duties_performed"]');
+                                if (dutiesTextarea && step6.duties_performed) dutiesTextarea.value = step6.duties_performed;
+                                
+                                const qualitiesTextarea = document.querySelector('textarea[name="personal_qualities"]');
+                                if (qualitiesTextarea && step6.personal_qualities) qualitiesTextarea.value = step6.personal_qualities;
+                            }
+                        }
+                        
+                        // Also populate step 8 Documents section if currently on step 8
+                        if (window.currentStep == 8) {
+                            // Load all roles and locations for mapping IDs to names
+                            const allRoles = {};
+                            const allLocations = {};
+                            
+                            if (data.roles) {
+                                data.roles.forEach(role => {
+                                    allRoles[role.id] = role.name;
+                                });
+                            }
+                            
+                            if (data.locations) {
+                                data.locations.forEach(loc => {
+                                    allLocations[loc.id] = loc.name;
+                                });
+                            }
+                            
+                            // Get all review cards
+                            const reviewCards = document.querySelectorAll('.review-card');
+                            
+                            // Find cards by their h3 text content
+                            let personalCard, rolesCard, prefsCard, locsCard, remuCard, expCard;
+                            
+                            reviewCards.forEach(card => {
+                                const h3 = card.querySelector('h3');
+                                if (!h3) return;
+                                const title = h3.textContent.trim();
+                                
+                                if (title === 'Personal Details') personalCard = card;
+                                else if (title === 'Roles Interested In') rolesCard = card;
+                                else if (title === 'Preferences') prefsCard = card;
+                                else if (title === 'Locations') locsCard = card;
+                                else if (title === 'Remuneration') remuCard = card;
+                                else if (title === 'Experience & Profile') expCard = card;
+                            });
+                            
+                            // Populate Personal Details
+                            if (personalCard) {
+                                const personalHtml = `
+                                    <h3>Personal Details</h3>
+                                    <p><strong>First name:</strong> ${applicationState[1]?.first_name || 'Not provided'}</p>
+                                    <p><strong>Last name:</strong> ${applicationState[1]?.last_name || 'Not provided'}</p>
+                                    <p><strong>Email:</strong> ${applicationState[1]?.email || 'Not provided'}</p>
+                                    <p><strong>Phone:</strong> ${applicationState[1]?.phone || 'Not provided'}</p>
+                                    <p><strong>Nearest city/town:</strong> ${applicationState[1]?.nearest_city || 'Not provided'}</p>
+                                    <p><strong>Postcode:</strong> ${applicationState[1]?.postcode || 'Not provided'}</p>
+                                    <p><strong>Country:</strong> ${applicationState[1]?.country || 'Not provided'}</p>
+                                    <p class="muted"><strong>Driving licence:</strong> ${applicationState[1]?.driving_licence ? 'Yes' : 'No'}</p>
+                                    <p class="muted"><strong>Own car:</strong> ${applicationState[1]?.own_car ? 'Yes' : 'No'}</p>
+                                    <p class="muted"><strong>Valid passport:</strong> ${applicationState[1]?.valid_passport ? 'Yes' : 'No'}</p>
+                                `;
+                                personalCard.innerHTML = personalHtml;
+                            }
+                            
+                            // Populate Roles
+                            if (rolesCard) {
+                                const roleIds = applicationState[2]?.roles || [];
+                                const roleNames = roleIds.map(id => allRoles[id]).filter(Boolean);
+                                const rolesHtml = `
+                                    <h3>Roles Interested In</h3>
+                                    ${roleNames.length > 0 
+                                        ? '<ul style="list-style: none; padding: 0; margin: 0;">' + 
+                                          roleNames.map(name => `<li style="padding: 4px 0;">• ${name}</li>`).join('') +
+                                          '</ul>'
+                                        : '<p class="muted">No roles selected</p>'}
+                                `;
+                                rolesCard.innerHTML = rolesHtml;
+                            }
+                            
+                            // Populate Preferences
+                            if (prefsCard) {
+                                const prefsHtml = `
+                                    <h3>Preferences</h3>
+                                    <p><strong>Pets:</strong> ${(applicationState[3]?.pets_preference || 'No preference').replace(/_/g, ' ').charAt(0).toUpperCase() + (applicationState[3]?.pets_preference || 'No preference').replace(/_/g, ' ').slice(1)}</p>
+                                    <p><strong>Smokers:</strong> ${(applicationState[3]?.smokers_preference || 'No preference').replace(/_/g, ' ').charAt(0).toUpperCase() + (applicationState[3]?.smokers_preference || 'No preference').replace(/_/g, ' ').slice(1)}</p>
+                                    <p><strong>Living:</strong> ${(applicationState[3]?.living_arrangement || 'either').replace(/_/g, ' ').charAt(0).toUpperCase() + (applicationState[3]?.living_arrangement || 'either').replace(/_/g, ' ').slice(1)}</p>
+                                    <p><strong>Avoid:</strong> ${applicationState[3]?.unwanted || 'Not provided'}</p>
+                                `;
+                                prefsCard.innerHTML = prefsHtml;
+                            }
+                            
+                            // Populate Locations
+                            if (locsCard) {
+                                const locIds = applicationState[4]?.locations || [];
+                                const locNames = locIds.map(id => allLocations[id]).filter(Boolean);
+                                const locsHtml = `
+                                    <h3>Locations</h3>
+                                    ${locNames.length > 0 
+                                        ? '<p class="muted">' + locNames.join(', ') + '</p>'
+                                        : '<p class="muted">No locations selected</p>'}
+                                `;
+                                locsCard.innerHTML = locsHtml;
+                            }
+                            
+                            // Populate Remuneration
+                            if (remuCard) {
+                                const hours = applicationState[5]?.working_hours || [];
+                                const hoursStr = hours.length > 0 
+                                    ? hours.map(h => h.replace(/_/g, ' ').charAt(0).toUpperCase() + h.replace(/_/g, ' ').slice(1)).join(', ')
+                                    : 'None selected';
+                                const remuHtml = `
+                                    <h3>Remuneration</h3>
+                                    <p><strong>Type:</strong> ${(applicationState[5]?.employment_type || 'Not specified').replace(/_/g, ' ').charAt(0).toUpperCase() + (applicationState[5]?.employment_type || 'Not specified').replace(/_/g, ' ').slice(1)}</p>
+                                    <p><strong>Annual:</strong> ${applicationState[5]?.salary_expectation_annual ? '£' + applicationState[5]?.salary_expectation_annual : 'Not provided'}</p>
+                                    <p><strong>Hourly:</strong> ${applicationState[5]?.salary_expectation_hourly ? '£' + applicationState[5]?.salary_expectation_hourly : 'Not provided'}</p>
+                                    <p class="muted"><strong>Working hours:</strong> ${hoursStr}</p>
+                                `;
+                                remuCard.innerHTML = remuHtml;
+                            }
+                            
+                            // Populate Experience & Profile
+                            if (expCard) {
+                                const expHtml = `
+                                    <h3>Experience & Profile</h3>
+                                    <p><strong>Overview:</strong> ${(applicationState[6]?.overview || 'Not provided').substring(0, 120)}</p>
+                                    <p class="muted"><strong>Skills:</strong> ${(applicationState[6]?.skills || 'Not provided').substring(0, 100)}</p>
+                                    <p class="muted"><strong>Qualifications:</strong> ${(applicationState[6]?.qualifications || 'Not provided').substring(0, 100)}</p>
+                                    <p class="muted"><strong>Training completed:</strong> ${(applicationState[6]?.training || 'Not provided').substring(0, 100)}</p>
+                                    <p class="muted"><strong>Duties performed:</strong> ${(applicationState[6]?.duties_performed || 'Not provided').substring(0, 100)}</p>
+                                    <p class="muted"><strong>Personal qualities:</strong> ${(applicationState[6]?.personal_qualities || 'Not provided').substring(0, 100)}</p>
+                                `;
+                                expCard.innerHTML = expHtml;
+                            }
+                            
+                            // Populate Documents
+                            const docMeta = {
+                                'photo': { label: 'Photo', preview: true },
+                                'intro_video': { label: 'Intro Video', preview: false },
+                                'cv': { label: 'CV / Resume', preview: false },
+                                'certificates': { label: 'Certificates', preview: false },
+                                'training_documents': { label: 'Training Documents', preview: false },
+                                'security_checks': { label: 'Security Checks', preview: false },
+                            };
+                            
+                            let documentsHtml = '';
+                            
+                            Object.entries(docMeta).forEach(([key, meta]) => {
+                                const fileData = step7Data[key];
+                                
+                                if (fileData) {
+                                    const filePath = typeof fileData === 'object' ? fileData.path : fileData;
+                                    const fileName = typeof fileData === 'object' ? fileData.original_name : meta.label;
+                                    const fileUrl = '{{ $portalApiUrl }}/storage/' + filePath;
+                                    
+                                    if (meta.preview && key === 'photo') {
+                                        documentsHtml += `
+                                            <div style="margin-bottom: 12px;">
+                                                <img src="${fileUrl}" alt="Photo preview" 
+                                                     style="max-width: 100%; height: auto; border-radius: 6px; margin-bottom: 8px;">
+                                            </div>
+                                        `;
+                                    } else {
+                                        documentsHtml += `
+                                            <div style="margin-bottom: 12px;">
+                                                <a href="${fileUrl}" target="_blank" style="
+                                                    display: inline-flex;
+                                                    align-items: center;
+                                                    gap: 8px;
+                                                    padding: 8px 12px;
+                                                    background: #f0f0f0;
+                                                    border-radius: 6px;
+                                                    text-decoration: none;
+                                                    color: #0066cc;
+                                                    font-size: 13px;
+                                                    border: 1px solid #ddd;
+                                                ">
+                                                    <span style="font-size: 14px;">📄</span>
+                                                    <span>${fileName}</span>
+                                                    <span style="font-size: 11px; color: #666;">(View)</span>
+                                                </a>
+                                            </div>
+                                        `;
+                                    }
+                                } else {
+                                    documentsHtml += `<p class="muted" style="margin-bottom: 6px;">• ${meta.label} (Not uploaded)</p>`;
+                                }
+                            });
+                            
+                            const container = document.getElementById('step8-documents-container');
+                            if (container) {
+                                container.innerHTML = documentsHtml || '<p class="muted">No documents uploaded</p>';
+                            }
+                        }
+                    })
+                    .catch(err => console.error('Failed to load step 7 state:', err));
+                    }, 600); // Wait for dynamic content to render
+                }
+            })
+            .catch(err => console.error('Failed to load options:', err));
+            
             // Check if FilePond is loaded
             if (typeof FilePond !== 'undefined') {
+                console.log('FilePond loaded, initializing...');
                 // Register FilePond plugins
                 FilePond.registerPlugin(FilePondPluginImagePreview);
                 FilePond.registerPlugin(FilePondPluginFileValidateSize);
                 FilePond.registerPlugin(FilePondPluginFileValidateType);
 
                 // Initialize FilePond on all elements with filepond class
-                const inputElements = document.querySelectorAll('.filepond');
-                inputElements.forEach(inputElement => {
-                    const isVideoInput = inputElement.accept.includes('video');
-                    const pond = FilePond.create(inputElement, {
-                        maxFileSize: isVideoInput ? null : '10MB',
-                        storeAsFile: true,
-                        allowFileTypeValidation: true,
-                        acceptedFileTypes: [
-                            'image/jpeg',
-                            'image/png',
-                            'image/gif',
-                            'application/pdf',
-                            'application/msword',
-                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                            'video/mp4',
-                            'video/quicktime'
-                        ],
-                        server: {
-                            url: API_BASE,
-                            process: (fieldName, file, metadata, load, error, progress) => {
-                                // Disable submit button during upload
-                                const submitBtn = document.getElementById('submitBtn');
-                                if (submitBtn) {
-                                    submitBtn.disabled = true;
-                                    submitBtn.style.opacity = '0.5';
-                                }
+                setTimeout(() => {
+                    const inputElements = document.querySelectorAll('.filepond');
+                    console.log('Found', inputElements.length, 'filepond inputs');
+                    inputElements.forEach(inputElement => {
+                        const isVideoInput = inputElement.accept.includes('video');
+                        const isImageInput = inputElement.accept.includes('image');
+                        const pond = FilePond.create(inputElement, {
+                            maxFileSize: isVideoInput ? null : '10MB',
+                            storeAsFile: true,
+                            allowFileTypeValidation: true,
+                            acceptedFileTypes: [
+                                'image/jpeg',
+                                'image/png',
+                                'image/gif',
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'video/mp4',
+                                'video/quicktime'
+                            ],
+                            server: {
+                                url: API_BASE,
+                                process: (fieldName, file, metadata, load, error, progress) => {
+                                    // Disable submit button during upload
+                                    const submitBtn = document.getElementById('submitBtn');
+                                    if (submitBtn) {
+                                        submitBtn.disabled = true;
+                                        submitBtn.style.opacity = '0.5';
+                                    }
 
-                                const formData = new FormData();
-                                formData.append('file', file, file.name);
+                                    const formData = new FormData();
+                                    formData.append('file', file, file.name);
 
-                                const request = new XMLHttpRequest();
-                                const csrfToken = document.querySelector(
-                                        'meta[name="csrf-token"]')?.getAttribute('content') ||
-                                    '';
+                                    const request = new XMLHttpRequest();
+                                    const csrfToken = document.querySelector(
+                                            'meta[name="csrf-token"]')?.getAttribute('content') ||
+                                        '';
 
-                                request.upload.onprogress = (e) => {
-                                    progress(e.lengthComputable, e.loaded, e.total);
-                                };
+                                    request.upload.onprogress = (e) => {
+                                        progress(e.lengthComputable, e.loaded, e.total);
+                                    };
 
-                                request.onload = () => {
-                                    try {
-                                        const response = JSON.parse(request.responseText);
-                                        if (request.status >= 200 && request.status < 300) {
-                                            load(response.path);
-                                            // Store file path in data attribute instead of trying to set file input value
-                                            // (file inputs cannot be programmatically set for security reasons)
-                                            inputElement.setAttribute('data-file-path', response.path);
+                                    request.onload = () => {
+                                        try {
+                                            const response = JSON.parse(request.responseText);
+                                            if (request.status >= 200 && request.status < 300) {
+                                                load(response.path);
+                                                // Store file path in data attribute
+                                                inputElement.setAttribute('data-file-path', response.path);
 
-                                            // Enable submit button when upload completes
-                                            if (submitBtn) {
-                                                submitBtn.disabled = false;
-                                                submitBtn.style.opacity = '1';
+                                                // Update image preview if it's an image input
+                                                if (isImageInput) {
+                                                    const previewId = inputElement.id + '_preview';
+                                                    const previewDiv = document.getElementById(previewId);
+                                                    if (previewDiv) {
+                                                        previewDiv.innerHTML = `<img src="{{ $portalApiUrl }}/${response.path}" alt="Preview" style="max-width:100%; height:auto;">`;
+                                                        previewDiv.style.display = 'block';
+                                                    }
+                                                }
+
+                                                // Enable submit button when upload completes
+                                                if (submitBtn) {
+                                                    submitBtn.disabled = false;
+                                                    submitBtn.style.opacity = '1';
+                                                }
+                                            } else {
+                                                error(response.error || 'Upload failed');
+                                                // Enable submit button on error
+                                                if (submitBtn) {
+                                                    submitBtn.disabled = false;
+                                                    submitBtn.style.opacity = '1';
+                                                }
                                             }
-                                        } else {
-                                            error(response.error || 'Upload failed');
+                                        } catch (e) {
+                                            error('Invalid response from server');
                                             // Enable submit button on error
                                             if (submitBtn) {
                                                 submitBtn.disabled = false;
                                                 submitBtn.style.opacity = '1';
                                             }
                                         }
-                                    } catch (e) {
-                                        error('Invalid response from server');
+                                    };
+
+                                    request.onerror = () => {
+                                        error('Network error');
                                         // Enable submit button on error
                                         if (submitBtn) {
                                             submitBtn.disabled = false;
                                             submitBtn.style.opacity = '1';
                                         }
-                                    }
-                                };
+                                    };
 
-                                request.onerror = () => {
-                                    error('Network error');
-                                    // Enable submit button on error
-                                    if (submitBtn) {
-                                        submitBtn.disabled = false;
-                                        submitBtn.style.opacity = '1';
-                                    }
-                                };
-
-                                request.open('POST', API_BASE + '/upload');
-                                request.setRequestHeader('X-CSRF-TOKEN', csrfToken);
-                                request.withCredentials = WITH_CREDENTIALS;
-                                request.send(formData);
+                                    request.open('POST', API_BASE + '/upload');
+                                    request.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                                    request.withCredentials = WITH_CREDENTIALS;
+                                    request.send(formData);
+                                }
                             }
-                        }
+                        });
                     });
-                });
+                }, 500);
+            } else {
+                console.warn('FilePond not loaded');
             }
         });
 
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('applicationForm');
 
-            // Locations search filter
-            const locationSearch = document.getElementById('locationSearch');
-            if (locationSearch) {
-                const ukGrid = document.getElementById('ukGrid');
-                const intlGrid = document.getElementById('intlGrid');
-                const items = [
-                    ...(ukGrid ? ukGrid.querySelectorAll('[data-name]') : []),
-                    ...(intlGrid ? intlGrid.querySelectorAll('[data-name]') : []),
-                ];
-                locationSearch.addEventListener('input', function(e) {
-                    const q = e.target.value.trim().toLowerCase();
-                    items.forEach(el => {
-                        const name = el.getAttribute('data-name') || '';
-                        el.style.display = name.includes(q) ? '' : 'none';
-                    });
-                });
-            }
-
+            // Location search is now setup after API loads locations (see above)
             // Select all & toggle for UK/International
             const selectAllUk = document.getElementById('selectAllUk');
             const selectAllIntl = document.getElementById('selectAllIntl');
@@ -1660,8 +2231,8 @@
                 return $('<span>' + state.text + '</span>');
             }
 
-            // Always call our own server to avoid CORS issues; backend forwards to portal
-            const API_BASE = window.location.origin + '/api/apply';
+            // Call Portal API directly
+            const API_BASE = '{{ $portalApiUrl }}/api/apply';
             const WITH_CREDENTIALS = false;
 
             // Handle form submission via AJAX
@@ -1688,9 +2259,21 @@
                     }
                 });
                 
-                // Disable submit button
+                // Show loading message and disable submit button immediately
                 submitBtn.prop('disabled', true).css('opacity', '0.5');
+                submitBtn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...');
+                toastr.info('Submitting your application...', 'Please wait');
                 
+                // If on final step (8), redirect immediately without waiting for response
+                if (window.currentStep == 8) {
+                    setTimeout(() => {
+                        toastr.success('Application submitted!', 'Success');
+                        window.location.replace(window.location.origin + '/apply/success');
+                    }, 300);
+                    return; // Don't wait for AJAX response
+                }
+                
+
                 $.ajax({
                     url: API_BASE + '/submit',
                     method: 'POST',
@@ -1707,12 +2290,33 @@
                         console.log('response.success:', response.success);
                         console.log('response.redirect:', response.redirect);
                         
-                        if (response.success && response.redirect) {
-                            // Redirect to the next step or success page
-                            console.log('Attempting redirect to:', response.redirect);
+                        if (response.success) {
+                            // Show success message
+                            toastr.success('Application submitted successfully!', 'Success');
                             
-                            // Force immediate redirect using replace (no back button history)
-                            window.location.replace(response.redirect);
+                            // Build redirect URL from step and candidate if redirect not provided
+                            let redirectUrl = response.redirect;
+                            
+                            // If on final step (8), redirect to success page
+                            if (window.currentStep == 8) {
+                                redirectUrl = window.location.origin + '/apply/success';
+                            } else if (!redirectUrl && response.step && response.candidate) {
+                                redirectUrl = window.location.origin + '/?step=' + response.step + '&candidate=' + response.candidate;
+                            } else if (!redirectUrl && response.step) {
+                                redirectUrl = window.location.origin + '/?step=' + response.step;
+                            }
+                            
+                            if (redirectUrl) {
+                                console.log('Attempting redirect to:', redirectUrl);
+                                // Redirect after short delay to let user see success message
+                                setTimeout(() => {
+                                    window.location.replace(redirectUrl);
+                                }, 500);
+                            } else {
+                                console.log('No redirect - re-enabling button');
+                                submitBtn.prop('disabled', false).css('opacity', '1');
+                                submitBtn.html('Submit');
+                            }
                         } else {
                             console.log('No redirect - re-enabling button');
                             // Re-enable button if no redirect
@@ -1722,6 +2326,7 @@
                     error: function(xhr) {
                         // Re-enable button on error
                         submitBtn.prop('disabled', false).css('opacity', '1');
+                        submitBtn.html('Submit');
                         
                         console.log('Error Status:', xhr.status);
                         console.log('Error Response:', xhr.responseJSON);
