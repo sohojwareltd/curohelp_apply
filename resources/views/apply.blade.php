@@ -1286,8 +1286,7 @@
                                                 }
                                             }
                                         @endphp
-                                        <div id="{{ $name }}_preview" class="image-preview"
-                                            @if ($existingUrl) style="display:block" @endif>
+                                        <div id="{{ $name }}_preview" class="image-preview">
                                             @if ($existingUrl)
                                                 <img src="{{ $existingUrl }}" alt="Preview">
                                             @endif
@@ -1657,6 +1656,7 @@
                                     // Load image preview if it's the photo field
                                     if (fieldName === 'photo') {
                                         let previewDiv = document.getElementById('photo_preview');
+                                        const photoInput = document.getElementById('photo');
                                         
                                         // Create preview div if it doesn't exist
                                         if (!previewDiv) {
@@ -1664,7 +1664,6 @@
                                             previewDiv = document.createElement('div');
                                             previewDiv.id = 'photo_preview';
                                             previewDiv.className = 'image-preview';
-                                            const photoInput = document.getElementById('photo');
                                             if (photoInput && photoInput.parentElement) {
                                                 photoInput.parentElement.appendChild(previewDiv);
                                             }
@@ -1672,9 +1671,8 @@
                                         
                                         if (previewDiv) {
                                             const imageUrl = '{{ $portalApiUrl }}/storage/' + filePath;
-                                            previewDiv.innerHTML = `<img src="${imageUrl}" alt="Preview" style="max-width:100%; height:auto;">`;
-                                            previewDiv.style.display = 'block';
-                                            console.log('Loading image from:', imageUrl);
+                                            console.log('Loading existing image from:', imageUrl);
+                                            handlePreviewImage(photoInput, previewDiv, imageUrl);
                                         }
                                     } else {
                                         // For non-image files (cv, certificates, etc), show as downloadable link
@@ -2076,18 +2074,34 @@
                                     request.onload = () => {
                                         try {
                                             const response = JSON.parse(request.responseText);
+                                            console.log('Upload response:', response);
+                                            
                                             if (request.status >= 200 && request.status < 300) {
                                                 load(response.path);
                                                 // Store file path in data attribute
                                                 inputElement.setAttribute('data-file-path', response.path);
+                                                console.log('File stored at data-file-path:', response.path);
 
                                                 // Update image preview if it's an image input
                                                 if (isImageInput) {
                                                     const previewId = inputElement.id + '_preview';
                                                     const previewDiv = document.getElementById(previewId);
+                                                    
                                                     if (previewDiv) {
-                                                        previewDiv.innerHTML = `<img src="{{ $portalApiUrl }}/${response.path}" alt="Preview" style="max-width:100%; height:auto;">`;
-                                                        previewDiv.style.display = 'block';
+                                                        // Use the url from response, this is the correct path
+                                                        const imageUrl = response.url;
+                                                        console.log('Loading preview image from:', imageUrl);
+                                                        
+                                                        if (imageUrl) {
+                                                            // Use the handlePreviewImage function
+                                                            handlePreviewImage(inputElement, previewDiv, imageUrl);
+                                                        } else {
+                                                            console.error('No image URL in response:', response);
+                                                            previewDiv.innerHTML = '<p style="color: #e74c3c; font-size: 12px;">No preview URL</p>';
+                                                            previewDiv.style.display = 'block';
+                                                        }
+                                                    } else {
+                                                        console.error('Preview div not found:', previewId);
                                                     }
                                                 }
 
@@ -2097,6 +2111,7 @@
                                                     submitBtn.style.opacity = '1';
                                                 }
                                             } else {
+                                                console.error('Upload failed with status:', request.status, response);
                                                 error(response.error || 'Upload failed');
                                                 // Enable submit button on error
                                                 if (submitBtn) {
@@ -2105,6 +2120,7 @@
                                                 }
                                             }
                                         } catch (e) {
+                                            console.error('Error parsing upload response:', e);
                                             error('Invalid response from server');
                                             // Enable submit button on error
                                             if (submitBtn) {
@@ -2171,6 +2187,53 @@
             selectAllIntl?.addEventListener('click', () => checkAll(intlGrid));
             toggleUk?.addEventListener('click', () => toggleGrid(toggleUk, ukGrid));
             toggleIntl?.addEventListener('click', () => toggleGrid(toggleIntl, intlGrid));
+        });
+    </script>
+
+    <script>
+        // Preview image handler
+        function handlePreviewImage(inputElement, previewDiv, imageUrl) {
+            if (!previewDiv || !imageUrl) {
+                console.warn('Invalid preview data:', { previewDiv, imageUrl });
+                return false;
+            }
+
+            // Create img element
+            const img = document.createElement('img');
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.alt = 'Preview';
+            
+            // Load with proper error handling
+            img.onload = function() {
+                console.log('✅ Preview image loaded successfully:', imageUrl);
+                previewDiv.innerHTML = '';
+                previewDiv.appendChild(img);
+                previewDiv.style.display = 'block';
+            };
+            
+            img.onerror = function(err) {
+                console.error('❌ Failed to load preview image:', imageUrl, err);
+                previewDiv.innerHTML = '<p style="color: #e74c3c; font-size: 12px;">Failed to load preview</p>';
+                previewDiv.style.display = 'block';
+                return false;
+            };
+            
+            // Set source last to trigger loading
+            img.src = imageUrl;
+            return true;
+        }
+
+        // Ensure preview divs exist on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const photoInput = document.getElementById('photo');
+            if (photoInput && !document.getElementById('photo_preview')) {
+                const previewDiv = document.createElement('div');
+                previewDiv.id = 'photo_preview';
+                previewDiv.className = 'image-preview';
+                photoInput.parentElement.appendChild(previewDiv);
+                console.log('Created photo_preview div');
+            }
         });
     </script>
 
@@ -2254,8 +2317,9 @@
                     const filePath = input.getAttribute('data-file-path');
                     const fieldName = input.getAttribute('id');
                     if (filePath && fieldName) {
-                        // Add the file path to form data
-                        formData.set(fieldName, filePath);
+                        // Remove file object and add path string instead
+                        formData.delete(fieldName);
+                        formData.append(fieldName, filePath);
                     }
                 });
                 
@@ -2263,16 +2327,6 @@
                 submitBtn.prop('disabled', true).css('opacity', '0.5');
                 submitBtn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...');
                 toastr.info('Submitting your application...', 'Please wait');
-                
-                // If on final step (8), redirect immediately without waiting for response
-                if (window.currentStep == 8) {
-                    setTimeout(() => {
-                        toastr.success('Application submitted!', 'Success');
-                        window.location.replace(window.location.origin + '/apply/success');
-                    }, 300);
-                    return; // Don't wait for AJAX response
-                }
-                
 
                 $.ajax({
                     url: API_BASE + '/submit',
@@ -2291,16 +2345,22 @@
                         console.log('response.redirect:', response.redirect);
                         
                         if (response.success) {
-                            // Show success message
-                            toastr.success('Application submitted successfully!', 'Success');
-                            
                             // Build redirect URL from step and candidate if redirect not provided
                             let redirectUrl = response.redirect;
                             
-                            // If on final step (8), redirect to success page
+                            // If on final step (8), redirect to success page immediately
                             if (window.currentStep == 8) {
+                                toastr.success('Application submitted successfully!', 'Success');
                                 redirectUrl = window.location.origin + '/apply/success';
-                            } else if (!redirectUrl && response.step && response.candidate) {
+                                // Immediate redirect for final step
+                                window.location.replace(redirectUrl);
+                                return;
+                            }
+                            
+                            // Show success message for other steps
+                            toastr.success('Application submitted successfully!', 'Success');
+                            
+                            if (!redirectUrl && response.step && response.candidate) {
                                 redirectUrl = window.location.origin + '/?step=' + response.step + '&candidate=' + response.candidate;
                             } else if (!redirectUrl && response.step) {
                                 redirectUrl = window.location.origin + '/?step=' + response.step;
@@ -2311,7 +2371,7 @@
                                 // Redirect after short delay to let user see success message
                                 setTimeout(() => {
                                     window.location.replace(redirectUrl);
-                                }, 500);
+                                }, 300);
                             } else {
                                 console.log('No redirect - re-enabling button');
                                 submitBtn.prop('disabled', false).css('opacity', '1');
