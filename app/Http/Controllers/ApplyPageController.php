@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -15,6 +16,13 @@ class ApplyPageController extends Controller
     {
         $step = max(1, min(self::STEPS, (int) $request->integer('step', 1)));
         $candidateUuid = (string) ($request->query('candidate') ?: Str::uuid());
+
+        try {
+            $countries = Country::query()->orderBy('name')->get();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to load countries', ['error' => $e->getMessage()]);
+            $countries = collect();
+        }
 
         $candidate = (object) [
             'uuid' => $candidateUuid,
@@ -30,7 +38,7 @@ class ApplyPageController extends Controller
             'candidate' => $candidate,
             'roles' => collect(),
             'locations' => collect(),
-            'countries' => collect(),
+            'countries' => $countries,
             'workingHoursOptions' => [],
             'employmentTypes' => ['employed', 'self_employed', 'either'],
             'candidateUuid' => $candidateUuid,

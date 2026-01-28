@@ -3,6 +3,128 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 
 <style>
+    /* Input Group Styling */
+    .input-group {
+        display: flex;
+        gap: 0;
+    }
+    
+    .input-group select,
+    .input-group input {
+        margin: 0;
+    }
+    
+    .input-group select {
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-right: 0 !important;
+    }
+    
+    .input-group input {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+    }
+    
+    /* Phone Country Code Select2 Styling */
+    /* Phone Code Modal Styles */
+    .phone-code-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .phone-code-modal.active {
+        display: flex;
+    }
+
+    .phone-code-modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 70vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .phone-code-modal-header {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .phone-code-search {
+        margin-bottom: 12px;
+    }
+
+    .phone-code-search input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d1d1;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .phone-code-list {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .phone-code-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        font-size: 14px;
+    }
+
+    .phone-code-item:hover {
+        background-color: #f3f4f6;
+    }
+
+    .phone-code-item.selected {
+        background-color: #dbeafe;
+        font-weight: 600;
+    }
+
+    .phone-code-item-emoji {
+        font-size: 20px;
+        min-width: 24px;
+    }
+
+    .phone-code-item-text {
+        flex: 1;
+    }
+
+    .phone-code-item-code {
+        font-weight: 600;
+        color: #667eea;
+        min-width: 50px;
+    }
+
+    .phone-code-item-name {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
     /* FilePond Custom Styling */
     .filepond--root {
         font-family: "Cabin", sans-serif;
@@ -872,52 +994,69 @@
                     <h2 class="form-section-title">Your Information</h2>
                     <p class="form-section-desc">Tell us your basic details so we can contact you.</p>
                     <div class="row g-4">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label for="first_name">First Name *</label>
                                 <input id="first_name" name="first_name" type="text"
                                     value="{{ old('first_name', $get(1, 'first_name', $get(1, 'full_name'))) }}" required>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label for="last_name">Last Name *</label>
                                 <input id="last_name" name="last_name" type="text"
                                     value="{{ old('last_name', $get(1, 'last_name')) }}" required>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label for="email">Email *</label>
-                                <input id="email" name="email" type="email"
-                                    value="{{ old('email', $get(1, 'email')) }}" required>
+                                <div style="position: relative;">
+                                    <input id="email" class="w-100" name="email" type="email"
+                                        value="{{ old('email', $get(1, 'email')) }}" required>
+                                    <span id="email-verified-badge" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #22c55e; font-weight: 600;">
+                                        ✓ Verified
+                                    </span>
+                                </div>
+                                <button type="button" id="verify-email-btn" class="btn outline" 
+                                    style="margin-top: 8px; font-size: 13px; padding: 6px 12px; display: none;">
+                                    Verify Email
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="phone">Phone *</label>
+                                <div class="input-group">
+                                    <button type="button" id="phone-code-btn" class="btn btn-outline-secondary" style="padding: 6px 12px; font-weight: 600; border-radius: 4px 0 0 4px; min-width: 90px; text-align: left;">
+                                        <span id="selected-code">Code</span>
+                                    </button>
+                                    <input type="hidden" id="phone_country_code" name="phone_country_code" value="">
+                                    <input id="phone" name="phone" type="tel" class="form-control"
+                                        value="{{ old('phone', $get(1, 'phone')) }}" 
+                                        placeholder="Enter phone number" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="postcode">Postcode <span id="postcode-required" style="display: none;">*</span></label>
+                                <input id="postcode" name="postcode" type="text"
+                                    value="{{ old('postcode', $get(1, 'postcode')) }}">
+                                <div id="postcode-error" style="display: none; color: #dc2626; font-size: 12px;">Postcode is required for UK.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="nearest_city">Nearest City/Town *</label>
+                                <input id="nearest_city" name="nearest_city" type="text"
+                                    value="{{ old('nearest_city', $get(1, 'nearest_city')) }}" required>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="phone">Phone *</label>
-                                <input id="phone" name="phone" type="tel"
-                                    value="{{ old('phone', $get(1, 'phone')) }}" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="postcode">Postcode</label>
-                                <input id="postcode" name="postcode" type="text"
-                                    value="{{ old('postcode', $get(1, 'postcode')) }}">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="nearest_city">Nearest City/Town</label>
-                                <input id="nearest_city" name="nearest_city" type="text"
-                                    value="{{ old('nearest_city', $get(1, 'nearest_city')) }}">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="country">Country</label>
-                                <select id="country" name="country" class="country-select ">
+                                <label for="country">Country *</label>
+                                <select id="country" name="country" class="country-select " required>
                                     <option value="">-- Select Country --</option>
                                     @foreach ($countries->sortBy(fn($c) => $c->name === 'United Kingdom' ? '0' : '1' . $c->name) as $country)
                                         <option value="{{ $country->name }}"
@@ -930,7 +1069,7 @@
                             </div>
                         </div>
 
-                        <div class="col-12">
+                        <div class="col-9">
                             <div class="form-group">
                                 <label>Additional</label>
                                 <div class="row g-3">
@@ -1097,7 +1236,7 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="employment">Employment Type *</label>
-                                <select id="employment" name="employment_type">
+                                <select id="employment" name="employment_type" required>
                                     <option value="">Select employment type</option>
                                     @foreach ($employmentTypes as $type)
                                         <option value="{{ $type }}" @selected(old('employment_type', $get(5, 'employment_type')) === $type)>
@@ -1108,7 +1247,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="annual">Annual Salary (£)</label>
+                                <label for="annual">Annual Salary ($)</label>
                                 <input id="annual" type="text" name="salary_expectation_annual"
                                     value="{{ old('salary_expectation_annual', $get(5, 'salary_expectation_annual')) }}"
                                     placeholder="e.g., 45000">
@@ -1116,10 +1255,23 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="hourly">Hourly Rate (£)</label>
+                                <label for="daily">Daily Rate ($)</label>
+                                <input id="daily" type="text" name="salary_expectation_daily"
+                                    value="{{ old('salary_expectation_daily', $get(5, 'salary_expectation_daily')) }}"
+                                    placeholder="e.g., 180.00">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="hourly">Hourly Rate ($)</label>
                                 <input id="hourly" type="text" name="salary_expectation_hourly"
                                     value="{{ old('salary_expectation_hourly', $get(5, 'salary_expectation_hourly')) }}"
                                     placeholder="e.g., 25.00">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div id="salary-error" style="display: none; color: #dc2626; font-size: 12px;">
+                                Please enter Annual, Daily, or Hourly rate.
                             </div>
                         </div>
                         <div class="col-12">
@@ -1169,6 +1321,9 @@
                                         </label>
                                     </div>
                                 </div>
+                                <div id="working-hours-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 6px;">
+                                    Please select at least one working hours option.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1176,44 +1331,61 @@
 
                 @if ($step === 6)
                     <h2 class="form-section-title">Your Profile</h2>
-                    <p class="form-section-desc">This is what our clients will see … This is your story to tell … Make it a
-                        compelling one.</p>
+                    <p class="form-section-desc">This is what our clients will see … This is your story to tell … Make it a compelling one. All fields require at least 50 characters.</p>
                     <div class="row g-4">
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="overview">Overview</label>
-                                <textarea id="overview" name="overview"
+                                <label for="overview">Overview *</label>
+                                <textarea id="overview" name="overview" required minlength="50"
                                     placeholder="This is your quick pitch … What you do, why your good at it and why you love it.">{{ old('overview', $get(6, 'overview')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="overview-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="skills">Key Skills</label>
-                                <textarea id="skills" name="skills" placeholder="List your main capabilities and strengths">{{ old('skills', $get(6, 'skills')) }}</textarea>
+                                <label for="skills">Key Skills *</label>
+                                <textarea id="skills" name="skills" required minlength="50" placeholder="List your main capabilities and strengths">{{ old('skills', $get(6, 'skills')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="skills-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="qualifications">Qualifications</label>
-                                <textarea id="qualifications" name="qualifications" placeholder="Degrees, certifications, and relevant training">{{ old('qualifications', $get(6, 'qualifications')) }}</textarea>
+                                <label for="qualifications">Qualifications *</label>
+                                <textarea id="qualifications" name="qualifications" required minlength="50" placeholder="Degrees, certifications, and relevant training">{{ old('qualifications', $get(6, 'qualifications')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="qualifications-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="training">Training Completed</label>
-                                <textarea id="training" name="training" placeholder="Any specialized training or courses">{{ old('training', $get(6, 'training')) }}</textarea>
+                                <label for="training">Training Completed *</label>
+                                <textarea id="training" name="training" required minlength="50" placeholder="Any specialized training or courses">{{ old('training', $get(6, 'training')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="training-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="duties">Duties Performed</label>
-                                <textarea id="duties" name="duties_performed" placeholder="Main responsibilities in your roles">{{ old('duties_performed', $get(6, 'duties_performed')) }}</textarea>
+                                <label for="duties">Duties Performed *</label>
+                                <textarea id="duties" name="duties_performed" required minlength="50" placeholder="Main responsibilities in your roles">{{ old('duties_performed', $get(6, 'duties_performed')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="duties-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="qualities">Personal Qualities</label>
-                                <textarea id="qualities" name="personal_qualities" placeholder="Your strengths and character traits">{{ old('personal_qualities', $get(6, 'personal_qualities')) }}</textarea>
+                                <label for="qualities">Personal Qualities *</label>
+                                <textarea id="qualities" name="personal_qualities" required minlength="50" placeholder="Your strengths and character traits">{{ old('personal_qualities', $get(6, 'personal_qualities')) }}</textarea>
+                                <div style="font-size: 12px; color: #888; margin-top: 4px;">
+                                    <span id="qualities-count">0</span>/50 characters needed
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1225,15 +1397,16 @@
                         2 minutes).</p>
                     @php
                         $fileFields = [
-                            'photo' => ['label' => 'Photo', 'types' => 'image/*', 'preview' => true],
+                            'photo' => ['label' => 'Photo *', 'types' => 'image/*', 'preview' => true, 'required' => true],
                             'intro_video' => [
                                 'label' => 'Introduction Video (⏱️ No more than 2 minutes)',
                                 'types' => 'video/mp4,video/quicktime',
                             ],
                             'cv' => [
-                                'label' => 'CV / Resume',
+                                'label' => 'CV / Resume *',
                                 'types' =>
                                     'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'required' => true,
                             ],
                             'certificates' => [
                                 'label' => 'Certificates',
@@ -1259,6 +1432,7 @@
                                     <label for="{{ $name }}">{{ $meta['label'] }}</label>
                                     <input id="{{ $name }}" class="filepond" type="file"
                                         name="{{ $name }}" accept="{{ $meta['types'] }}"
+                                        {{ isset($meta['required']) && $meta['required'] ? 'required' : '' }}
                                         onchange="previewImage(this, '{{ $name }}_preview')">
                                     @if (isset($meta['note']))
                                         <p class="upload-note">{{ $meta['note'] }}</p>
@@ -1310,7 +1484,13 @@
                                     {{ $get(1, 'first_name', $get(1, 'full_name')) ?: 'Not provided' }}</p>
                                 <p><strong>Last name:</strong> {{ $get(1, 'last_name') ?: 'Not provided' }}</p>
                                 <p><strong>Email:</strong> {{ $get(1, 'email') ?: 'Not provided' }}</p>
-                                <p><strong>Phone:</strong> {{ $get(1, 'phone') ?: 'Not provided' }}</p>
+                                <p><strong>Phone:</strong> 
+                                    @if($get(1, 'phone_country_code'))
+                                        {{ $get(1, 'phone_country_code') }} {{ $get(1, 'phone') ?: '' }}
+                                    @else
+                                        {{ $get(1, 'phone') ?: 'Not provided' }}
+                                    @endif
+                                </p>
                                 <p><strong>Nearest city/town:</strong> {{ $get(1, 'nearest_city') ?: 'Not provided' }}</p>
                                 <p><strong>Postcode:</strong> {{ $get(1, 'postcode') ?: 'Not provided' }}</p>
                                 <p><strong>Country:</strong> {{ $get(1, 'country') ?: 'Not provided' }}</p>
@@ -1380,6 +1560,9 @@
                                 <p><strong>Annual:</strong>
                                     {{ $get(5, 'salary_expectation_annual') ? '£' . number_format($get(5, 'salary_expectation_annual')) : 'Not provided' }}
                                 </p>
+                                <p><strong>Daily:</strong>
+                                    {{ $get(5, 'salary_expectation_daily') ? '$' . $get(5, 'salary_expectation_daily') : 'Not provided' }}
+                                </p>
                                 <p><strong>Hourly:</strong>
                                     {{ $get(5, 'salary_expectation_hourly') ? '£' . $get(5, 'salary_expectation_hourly') : 'Not provided' }}
                                 </p>
@@ -1437,13 +1620,91 @@
                     <a class="btn outline" href="{{ url('/') }}">Back</a>
                 @endif
                 @if ($step < count($stepTitles))
-                    <button id="submitBtn" class="btn" type="submit">Save & Next</button>
+                    <button id="submitBtn" class="btn" type="submit" {{ $step === 1 ? 'disabled' : '' }}>Save & Next</button>
                 @else
-                    <button class="btn" type="submit">Submit application</button>
+                    <button id="submitBtn" class="btn" type="submit">Submit application</button>
                 @endif
             </div>
+            @if ($step === 1)
+                <p id="verification-notice" style="text-align: center; margin-top: 12px; font-size: 13px; color: #dc2626; display: none;">
+                    <svg style="display: inline-block; width: 16px; height: 16px; margin-right: 4px; vertical-align: middle;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    Please verify your email to continue
+                </p>
+            @endif
 
         </form>
+    </div>
+
+    <!-- Phone Country Code Selection Modal -->
+    <div id="phone-code-modal" class="phone-code-modal">
+        <div class="phone-code-modal-content">
+            <div class="phone-code-modal-header">
+                Select Country Code
+                <button type="button" style="float: right; background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;" onclick="document.getElementById('phone-code-modal').classList.remove('active')">×</button>
+            </div>
+            <div class="phone-code-search">
+                <input type="text" id="phone-code-search" placeholder="Search country...">
+            </div>
+            <div class="phone-code-list" id="phone-code-list">
+                <!-- Countries will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div id="otp-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 40px; max-width: 480px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 60px; height: 60px; background: #000000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <h2 style="margin: 0 0 10px; font-size: 24px; color: #1f2937;">Verify Your Email</h2>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                    We've sent a 6-digit code to<br>
+                    <strong id="otp-email-display" style="color: #667eea;"></strong>
+                </p>
+            </div>
+
+            <div id="otp-alert" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
+                    Enter Verification Code
+                </label>
+                <input type="text" id="otp-input" maxlength="6" placeholder="000000" 
+                    style="width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 24px; letter-spacing: 8px; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;"
+                    autocomplete="off">
+                <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280; text-align: center;">
+                    Code expires in <span id="otp-timer" style="font-weight: 600; color: #667eea;">10:00</span>
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="button" id="otp-verify-btn" class="btn" 
+                    style="flex: 1; padding: 12px; font-size: 16px; font-weight: 600;">
+                    Verify Code
+                </button>
+                <button type="button" id="otp-cancel-btn" class="btn outline" 
+                    style="flex: 0.5; padding: 12px;">
+                    Cancel
+                </button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">
+                    Didn't receive the code?
+                    <button type="button" id="otp-resend-btn" 
+                        style="background: none; border: none; color: #667eea; font-weight: 600; cursor: pointer; text-decoration: underline; font-size: 13px; padding: 0;">
+                        Resend
+                    </button>
+                </p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1475,9 +1736,21 @@
                 method: 'GET',
                 headers: { 'Accept': 'application/json' }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    console.warn('API returned status:', response.status);
+                    return { roles: [], locations: [] }; // Return empty data
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log('Options loaded:', data);
+                
+                // Only populate if data exists, otherwise use page defaults
+                if (!data || !data.roles) {
+                    console.warn('No roles data received, using page defaults');
+                    return; // Use the server-rendered HTML instead
+                }
                 
                 // Populate roles (step 2)
                 if (data.roles && data.roles.length > 0) {
@@ -1550,43 +1823,8 @@
                     }
                 }
                 
-                // Populate countries (step 1)
-                if (data.countries && data.countries.length > 0) {
-                    const countrySelect = document.querySelector('select[name="country"]');
-                    if (countrySelect) {
-                        // Keep the empty option
-                        const emptyOption = countrySelect.querySelector('option[value=""]');
-                        countrySelect.innerHTML = emptyOption ? emptyOption.outerHTML : '<option value="">-- Select Country --</option>';
-                        
-                        // Sort countries: UK first, then alphabetically
-                        const sorted = data.countries.sort((a, b) => {
-                            if (a.name === 'United Kingdom') return -1;
-                            if (b.name === 'United Kingdom') return 1;
-                            return a.name.localeCompare(b.name);
-                        });
-                        
-                        sorted.forEach(country => {
-                            const option = document.createElement('option');
-                            option.value = country.name;
-                            option.textContent = country.name;
-                            countrySelect.appendChild(option);
-                        });
-                        
-                        // Reinitialize Select2 after jQuery is loaded (it's loaded later in the page)
-                        setTimeout(() => {
-                            if (window.jQuery && window.jQuery.fn.select2) {
-                                try {
-                                    window.jQuery(countrySelect).select2('destroy');
-                                } catch(e) {}
-                                window.jQuery(countrySelect).select2({
-                                    placeholder: '-- Select Country --',
-                                    allowClear: true,
-                                    width: '100%'
-                                });
-                            }
-                        }, 500);
-                    }
-                }
+                // Load phone country codes from rinvex/countries package
+                loadPhoneCountryCodes();
                 
                 // Populate working hours options (step 5) - Static options
                 const workingHoursOptions = ['Rota', 'Day', 'Night', 'Full Time', 'Part Time', 'Seasonal', 'Temporary'];
@@ -1723,10 +1961,28 @@
                                 const step1 = applicationState[1];
                                 document.querySelector('input[name="first_name"]')?.setAttribute('value', step1.first_name || '');
                                 document.querySelector('input[name="last_name"]')?.setAttribute('value', step1.last_name || '');
-                                document.querySelector('input[name="email"]')?.setAttribute('value', step1.email || '');
+                                const emailField = document.querySelector('input[name="email"]');
+                                emailField?.setAttribute('value', step1.email || '');
                                 document.querySelector('input[name="phone"]')?.setAttribute('value', step1.phone || '');
                                 document.querySelector('input[name="nearest_city"]')?.setAttribute('value', step1.nearest_city || '');
                                 document.querySelector('input[name="postcode"]')?.setAttribute('value', step1.postcode || '');
+                                
+                                // Re-check email verification after async population
+                                if (emailField && typeof window.checkEmailVerification === 'function') {
+                                    window.checkEmailVerification();
+                                }
+
+                                // Restore phone country code using Select2
+                                if (step1.phone_country_code) {
+                                    const phoneCodeSelect = document.querySelector('select[name="phone_country_code"]');
+                                    if (phoneCodeSelect) {
+                                        if (window.jQuery && window.jQuery.fn.select2) {
+                                            window.jQuery(phoneCodeSelect).val(step1.phone_country_code).trigger('change');
+                                        } else {
+                                            phoneCodeSelect.value = step1.phone_country_code;
+                                        }
+                                    }
+                                }
                                 
                                 // Restore country using Select2
                                 if (step1.country) {
@@ -1792,9 +2048,11 @@
                             if (applicationState[5]) {
                                 const step5 = applicationState[5];
                                 if (step5.employment_type) {
-                                    document.querySelector(`input[name="employment_type"][value="${step5.employment_type}"]`)?.setAttribute('checked', 'checked');
+                                    const employmentSelect = document.querySelector('select[name="employment_type"]');
+                                    if (employmentSelect) employmentSelect.value = step5.employment_type;
                                 }
                                 document.querySelector('input[name="salary_expectation_annual"]')?.setAttribute('value', step5.salary_expectation_annual || '');
+                                document.querySelector('input[name="salary_expectation_daily"]')?.setAttribute('value', step5.salary_expectation_daily || '');
                                 document.querySelector('input[name="salary_expectation_hourly"]')?.setAttribute('value', step5.salary_expectation_hourly || '');
                                 if (step5.working_hours && Array.isArray(step5.working_hours)) {
                                     step5.working_hours.forEach(hours => {
@@ -1868,12 +2126,16 @@
                             
                             // Populate Personal Details
                             if (personalCard) {
+                                const phoneDisplay = applicationState[1]?.phone_country_code 
+                                    ? `${applicationState[1].phone_country_code} ${applicationState[1]?.phone || ''}`
+                                    : (applicationState[1]?.phone || 'Not provided');
+                                    
                                 const personalHtml = `
                                     <h3>Personal Details</h3>
                                     <p><strong>First name:</strong> ${applicationState[1]?.first_name || 'Not provided'}</p>
                                     <p><strong>Last name:</strong> ${applicationState[1]?.last_name || 'Not provided'}</p>
                                     <p><strong>Email:</strong> ${applicationState[1]?.email || 'Not provided'}</p>
-                                    <p><strong>Phone:</strong> ${applicationState[1]?.phone || 'Not provided'}</p>
+                                    <p><strong>Phone:</strong> ${phoneDisplay}</p>
                                     <p><strong>Nearest city/town:</strong> ${applicationState[1]?.nearest_city || 'Not provided'}</p>
                                     <p><strong>Postcode:</strong> ${applicationState[1]?.postcode || 'Not provided'}</p>
                                     <p><strong>Country:</strong> ${applicationState[1]?.country || 'Not provided'}</p>
@@ -1933,8 +2195,9 @@
                                 const remuHtml = `
                                     <h3>Remuneration</h3>
                                     <p><strong>Type:</strong> ${(applicationState[5]?.employment_type || 'Not specified').replace(/_/g, ' ').charAt(0).toUpperCase() + (applicationState[5]?.employment_type || 'Not specified').replace(/_/g, ' ').slice(1)}</p>
-                                    <p><strong>Annual:</strong> ${applicationState[5]?.salary_expectation_annual ? '£' + applicationState[5]?.salary_expectation_annual : 'Not provided'}</p>
-                                    <p><strong>Hourly:</strong> ${applicationState[5]?.salary_expectation_hourly ? '£' + applicationState[5]?.salary_expectation_hourly : 'Not provided'}</p>
+                                    <p><strong>Annual:</strong> ${applicationState[5]?.salary_expectation_annual ? '$' + applicationState[5]?.salary_expectation_annual : 'Not provided'}</p>
+                                    <p><strong>Daily:</strong> ${applicationState[5]?.salary_expectation_daily ? '$' + applicationState[5]?.salary_expectation_daily : 'Not provided'}</p>
+                                    <p><strong>Hourly:</strong> ${applicationState[5]?.salary_expectation_hourly ? '$' + applicationState[5]?.salary_expectation_hourly : 'Not provided'}</p>
                                     <p class="muted"><strong>Working hours:</strong> ${hoursStr}</p>
                                 `;
                                 remuCard.innerHTML = remuHtml;
@@ -2018,7 +2281,13 @@
                     }, 600); // Wait for dynamic content to render
                 }
             })
-            .catch(err => console.error('Failed to load options:', err));
+            .catch(err => {
+                console.error('Failed to load options from API:', err);
+                console.warn('Using server-rendered defaults instead');
+                // The page will still work with server-rendered options
+                // Just load phone codes separately
+                loadPhoneCountryCodes();
+            });
             
             // Check if FilePond is loaded
             if (typeof FilePond !== 'undefined') {
@@ -2152,9 +2421,123 @@
                 console.warn('FilePond not loaded');
             }
         });
+        
+        // Load phone country codes from route
+        function loadPhoneCountryCodes() {
+            fetch('{{ route("countries.phone-codes") }}')
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(countries => {
+                    console.log('Phone codes loaded:', countries.length);
+                    
+                    if (!countries || countries.length === 0) {
+                        console.warn('No countries returned from API');
+                        return;
+                    }
+                    
+                    // Store countries globally for search/filter
+                    window.phoneCountries = countries;
+                    
+                    // Populate the modal list
+                    const phoneCodeList = document.getElementById('phone-code-list');
+                    if (phoneCodeList) {
+                        phoneCodeList.innerHTML = countries.map(country => `
+                            <button type="button" class="phone-code-item" data-code="${country.calling_code}" data-name="${country.name.toLowerCase()}">
+                                <span class="phone-code-item-emoji">${country.emoji}</span>
+                                <span class="phone-code-item-text">
+                                    <div class="phone-code-item-code">${country.calling_code}</div>
+                                    <div class="phone-code-item-name">${country.name}</div>
+                                </span>
+                            </button>
+                        `).join('');
+                        
+                        // Add click handlers
+                        document.querySelectorAll('.phone-code-item').forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const code = this.getAttribute('data-code');
+                                const name = this.getAttribute('data-name');
+                                selectPhoneCode(code, name, this);
+                            });
+                        });
+                    }
+                    
+                    // Set UK as default if no selection
+                    const phoneCodeInput = document.getElementById('phone_country_code');
+                    if (phoneCodeInput && !phoneCodeInput.value) {
+                        const ukCountry = countries.find(c => c.code === 'GB');
+                        if (ukCountry) {
+                            phoneCodeInput.value = ukCountry.calling_code;
+                            document.getElementById('selected-code').textContent = ukCountry.calling_code;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load phone codes:', err);
+                });
+        }
+        
+        function selectPhoneCode(code, name, element) {
+            // Update hidden input
+            document.getElementById('phone_country_code').value = code;
+            
+            // Update button text
+            document.getElementById('selected-code').textContent = code;
+            
+            // Update selected state
+            document.querySelectorAll('.phone-code-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            if (element) {
+                element.classList.add('selected');
+            }
+            
+            // Close modal
+            document.getElementById('phone-code-modal').classList.remove('active');
+            
+            // Focus on phone input
+            document.getElementById('phone').focus();
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('applicationForm');
+
+            // Phone code modal button handler
+            const phoneCodeBtn = document.getElementById('phone-code-btn');
+            const phoneCodeModal = document.getElementById('phone-code-modal');
+            const phoneCodeSearch = document.getElementById('phone-code-search');
+            
+            if (phoneCodeBtn) {
+                phoneCodeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    phoneCodeModal.classList.add('active');
+                    phoneCodeSearch?.focus();
+                });
+            }
+            
+            // Phone code search/filter
+            if (phoneCodeSearch) {
+                phoneCodeSearch.addEventListener('input', function(e) {
+                    const query = e.target.value.toLowerCase();
+                    document.querySelectorAll('.phone-code-item').forEach(item => {
+                        const name = item.getAttribute('data-name');
+                        const code = item.getAttribute('data-code');
+                        const matches = name.includes(query) || code.includes(query);
+                        item.style.display = matches ? '' : 'none';
+                    });
+                });
+            }
+            
+            // Close modal when clicking outside
+            if (phoneCodeModal) {
+                phoneCodeModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('active');
+                    }
+                });
+            }
 
             // Location search is now setup after API loads locations (see above)
             // Select all & toggle for UK/International
@@ -2164,6 +2547,29 @@
             const toggleIntl = document.getElementById('toggleIntl');
             const ukGrid = document.getElementById('ukGrid');
             const intlGrid = document.getElementById('intlGrid');
+
+            const countrySelect = document.getElementById('country');
+            const postcodeInput = document.getElementById('postcode');
+            const postcodeRequired = document.getElementById('postcode-required');
+            const postcodeError = document.getElementById('postcode-error');
+
+            function isUkCountry(value) {
+                const val = (value || '').trim().toLowerCase();
+                return val === 'uk' || val === 'united kingdom' || val.includes('united kingdom');
+            }
+
+            function updatePostcodeRequirement() {
+                if (!countrySelect || !postcodeInput) return;
+                const required = isUkCountry(countrySelect.value);
+                postcodeInput.required = required;
+                if (postcodeRequired) {
+                    postcodeRequired.style.display = required ? 'inline' : 'none';
+                }
+                if (!required) {
+                    postcodeInput.classList.remove('input-danger');
+                    if (postcodeError) postcodeError.style.display = 'none';
+                }
+            }
 
             function checkAll(gridEl) {
                 gridEl?.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
@@ -2187,6 +2593,13 @@
             selectAllIntl?.addEventListener('click', () => checkAll(intlGrid));
             toggleUk?.addEventListener('click', () => toggleGrid(toggleUk, ukGrid));
             toggleIntl?.addEventListener('click', () => toggleGrid(toggleIntl, intlGrid));
+
+            countrySelect?.addEventListener('change', updatePostcodeRequirement);
+            postcodeInput?.addEventListener('input', function() {
+                if (postcodeError) postcodeError.style.display = 'none';
+                postcodeInput.classList.remove('input-danger');
+            });
+            updatePostcodeRequirement();
         });
     </script>
 
@@ -2284,6 +2697,51 @@
                 }
             });
 
+            // Step 6: Character counters for textareas
+            const textareaFields = [
+                { id: 'overview', countId: 'overview-count' },
+                { id: 'skills', countId: 'skills-count' },
+                { id: 'qualifications', countId: 'qualifications-count' },
+                { id: 'training', countId: 'training-count' },
+                { id: 'duties', countId: 'duties-count' },
+                { id: 'qualities', countId: 'qualities-count' },
+            ];
+
+            textareaFields.forEach(field => {
+                const textarea = document.getElementById(field.id);
+                const counter = document.getElementById(field.countId);
+                if (textarea && counter) {
+                    function updateCounter() {
+                        const len = textarea.value.length;
+                        const needed = Math.max(0, 50 - len);
+                        counter.textContent = needed;
+                        counter.style.color = needed === 0 ? '#22c55e' : needed <= 10 ? '#f59e0b' : '#888';
+                    }
+                    textarea.addEventListener('input', updateCounter);
+                    updateCounter();
+                }
+            });
+
+            // Initialize Select2 for phone country code dropdown - will be re-initialized after countries load
+            // (Countries are loaded via AJAX, so we initialize again in loadPhoneCountryCodes)
+
+            // Step 5: clear salary/working hours errors on input
+            const salaryInputs = document.querySelectorAll('input[name="salary_expectation_annual"], input[name="salary_expectation_daily"], input[name="salary_expectation_hourly"]');
+            const salaryError = document.getElementById('salary-error');
+            salaryInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    salaryInputs.forEach(el => el.classList.remove('input-danger'));
+                    if (salaryError) salaryError.style.display = 'none';
+                });
+            });
+
+            const workingHoursError = document.getElementById('working-hours-error');
+            document.querySelectorAll('input[name="working_hours[]"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    if (workingHoursError) workingHoursError.style.display = 'none';
+                });
+            });
+
             function formatCountry(state) {
                 if (!state.id) return state.text;
                 return $('<span>' + state.text + '</span>');
@@ -2294,17 +2752,138 @@
                 return $('<span>' + state.text + '</span>');
             }
 
+            // Global functions for phone code formatting with flags
+            window.formatPhoneCodeOption = function(state) {
+                if (!state.id) return state.text;
+                
+                var emoji = $(state.element).attr('data-emoji') || '🌍';
+                var code = state.id;
+                
+                var $option = $(
+                    '<span class="phone-code-option">' +
+                        '<span class="phone-code-flag">' + emoji + '</span>' +
+                        '<span><strong>' + code + '</strong> ' + state.text.replace(code, '').trim() + '</span>' +
+                    '</span>'
+                );
+                return $option;
+            };
+            
+            window.formatPhoneCodeSelection = function(state) {
+                if (!state.id) return state.text;
+                
+                var emoji = $(state.element).attr('data-emoji') || '🌍';
+                
+                return $('<span class="phone-code-option">' +
+                    '<span class="phone-code-flag">' + emoji + '</span> ' +
+                    '<strong>' + state.id + '</strong>' +
+                '</span>');
+            };
+            
+            // Function to get country flag emoji
             // Call Portal API directly
             const API_BASE = '{{ $portalApiUrl }}/api/apply';
             const WITH_CREDENTIALS = false;
 
+            async function resolveUkPostcodeLatLng(postcode) {
+                const cleaned = (postcode || '').trim();
+                if (!cleaned) return null;
+                const ukPostcodeRegex = /^(GIR\s?0AA|(?:[A-Z]{1,2}\d{1,2}[A-Z]?|[A-Z]{1,2}\d[A-Z])\s?\d[ABD-HJLNP-UW-Z]{2})$/i;
+                if (!ukPostcodeRegex.test(cleaned)) return { invalid: true };
+                const url = `https://api.postcodes.io/postcodes/${encodeURIComponent(cleaned)}`;
+
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (!data || data.status !== 200 || !data.result) return null;
+                return {
+                    lat: data.result.latitude,
+                    lng: data.result.longitude,
+                };
+            }
+
             // Handle form submission via AJAX
-            $('#applicationForm').on('submit', function(e) {
+            $('#applicationForm').on('submit', async function(e) {
                 e.preventDefault();
                 
                 const form = $(this);
                 const formData = new FormData(this);
                 const submitBtn = $('#submitBtn');
+
+                // Step 5 validation: require at least one salary field and one working hours selection
+                const currentStep = document.querySelector('input[name="step"]')?.value;
+                if (currentStep == 5) {
+                    const annual = document.querySelector('input[name="salary_expectation_annual"]');
+                    const daily = document.querySelector('input[name="salary_expectation_daily"]');
+                    const hourly = document.querySelector('input[name="salary_expectation_hourly"]');
+                    const salaryError = document.getElementById('salary-error');
+                    const workingHoursError = document.getElementById('working-hours-error');
+
+                    const hasSalary = !!(annual?.value.trim() || daily?.value.trim() || hourly?.value.trim());
+                    if (!hasSalary) {
+                        [annual, daily, hourly].forEach(el => el?.classList.add('input-danger'));
+                        if (salaryError) salaryError.style.display = 'block';
+                        toastr.error('Enter Annual, Daily, or Hourly rate.', 'Validation Error');
+                        annual?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        annual?.focus();
+                        return;
+                    }
+
+                    const workingHoursChecked = document.querySelectorAll('input[name="working_hours[]"]:checked').length > 0;
+                    if (!workingHoursChecked) {
+                        if (workingHoursError) workingHoursError.style.display = 'block';
+                        toastr.error('Select at least one working hours option.', 'Validation Error');
+                        document.querySelector('[data-name="working-hours-container"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
+                    }
+                }
+
+                // Client-side check: UK requires postcode
+                const countryEl = document.getElementById('country');
+                const postcodeEl = document.getElementById('postcode');
+                const postcodeError = document.getElementById('postcode-error');
+                if (countryEl && postcodeEl) {
+                    const countryVal = (countryEl.value || '').trim().toLowerCase();
+                    const isUk = countryVal === 'uk' || countryVal === 'united kingdom' || countryVal.includes('united kingdom');
+                    if (isUk && !postcodeEl.value.trim()) {
+                        postcodeEl.classList.add('input-danger');
+                        if (postcodeError) postcodeError.style.display = 'block';
+                        toastr.error('Postcode is required for UK.', 'Validation Error');
+                        postcodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        postcodeEl.focus();
+                        return;
+                    }
+
+                    if (isUk && postcodeEl.value.trim()) {
+                        try {
+                            const coords = await resolveUkPostcodeLatLng(postcodeEl.value);
+                            if (coords && coords.invalid) {
+                                postcodeEl.classList.add('input-danger');
+                                if (postcodeError) postcodeError.style.display = 'block';
+                                toastr.error('Invalid UK postcode format.', 'Validation Error');
+                                postcodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                postcodeEl.focus();
+                                return;
+                            }
+                            if (!coords || coords.lat == null || coords.lng == null) {
+                                postcodeEl.classList.add('input-danger');
+                                if (postcodeError) postcodeError.style.display = 'block';
+                                toastr.error('Invalid UK postcode. Please check and try again.', 'Validation Error');
+                                postcodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                postcodeEl.focus();
+                                return;
+                            }
+                            formData.append('lat', coords.lat);
+                            formData.append('lng', coords.lng);
+                        } catch (err) {
+                            postcodeEl.classList.add('input-danger');
+                            if (postcodeError) postcodeError.style.display = 'block';
+                            toastr.error('Unable to verify UK postcode right now.', 'Validation Error');
+                            postcodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            postcodeEl.focus();
+                            return;
+                        }
+                    }
+                }
                 
                 // Clear previous danger styling
                 document.querySelectorAll('.input-danger').forEach(el => {
@@ -2440,5 +3019,343 @@
                 });
             });
         });
+    </script>
+
+    <!-- OTP Verification AJAX Script -->
+    <script>
+        (function() {
+            const emailInput = document.getElementById('email');
+            const verifyBtn = document.getElementById('verify-email-btn');
+            const verifiedBadge = document.getElementById('email-verified-badge');
+            const otpModal = document.getElementById('otp-modal');
+            const otpInput = document.getElementById('otp-input');
+            const otpVerifyBtn = document.getElementById('otp-verify-btn');
+            const otpCancelBtn = document.getElementById('otp-cancel-btn');
+            const otpResendBtn = document.getElementById('otp-resend-btn');
+            const otpAlert = document.getElementById('otp-alert');
+            const otpEmailDisplay = document.getElementById('otp-email-display');
+            const otpTimer = document.getElementById('otp-timer');
+            const submitBtn = document.getElementById('submitBtn');
+            const verificationNotice = document.getElementById('verification-notice');
+            
+            let timerInterval = null;
+            let expiryTime = null;
+            let isEmailVerified = false;
+            const currentStep = {{ $step }};
+
+            // Update submit button state
+            function updateSubmitButton() {
+                if (currentStep === 1) {
+                    if (isEmailVerified) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        submitBtn.style.cursor = 'pointer';
+                        if (verificationNotice) verificationNotice.style.display = 'none';
+                    } else {
+                        submitBtn.disabled = true;
+                        submitBtn.style.opacity = '0.5';
+                        submitBtn.style.cursor = 'not-allowed';
+                        if (verificationNotice) verificationNotice.style.display = 'block';
+                    }
+                }
+            }
+
+            // Check if email is already verified on page load
+            function checkEmailVerification() {
+                const email = emailInput.value.trim();
+                if (!email || !isValidEmail(email)) {
+                    if (currentStep === 1) {
+                        showUnverifiedState();
+                        updateSubmitButton();
+                    }
+                    return;
+                }
+
+                fetch('{{ route("otp.check") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.verified) {
+                        showVerifiedState();
+                    } else {
+                        showUnverifiedState();
+                    }
+                    updateSubmitButton();
+                })
+                .catch(err => {
+                    console.error('Verification check failed:', err);
+                    if (currentStep === 1) {
+                        showUnverifiedState();
+                        updateSubmitButton();
+                    }
+                });
+            }
+
+            window.checkEmailVerification = checkEmailVerification;
+
+            // Validate email format
+            function isValidEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            // Show verified state
+            function showVerifiedState() {
+                isEmailVerified = true;
+                verifiedBadge.style.display = 'block';
+                verifyBtn.style.display = 'none';
+                emailInput.style.paddingRight = '100px';
+                updateSubmitButton();
+            }
+
+            // Show unverified state
+            function showUnverifiedState() {
+                isEmailVerified = false;
+                verifiedBadge.style.display = 'none';
+                verifyBtn.style.display = 'inline-block';
+                emailInput.style.paddingRight = '12px';
+                updateSubmitButton();
+            }
+
+            // Email input change handler
+            emailInput.addEventListener('input', function() {
+                const email = this.value.trim();
+                if (email && isValidEmail(email)) {
+                    checkEmailVerification();
+                } else {
+                    verifyBtn.style.display = 'none';
+                    verifiedBadge.style.display = 'none';
+                    if (currentStep === 1) {
+                        isEmailVerified = false;
+                        updateSubmitButton();
+                    }
+                }
+            });
+
+            // Initial check on page load
+            if (emailInput && emailInput.value.trim()) {
+                checkEmailVerification();
+            } else if (currentStep === 1) {
+                updateSubmitButton();
+            }
+
+            // Send OTP
+            function sendOTP() {
+                const email = emailInput.value.trim();
+                
+                if (!email || !isValidEmail(email)) {
+                    showAlert('Please enter a valid email address', 'error');
+                    return;
+                }
+
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Sending...';
+
+                fetch('{{ route("otp.send") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        openOTPModal(email, data.expires_in || 600);
+                        showModalAlert('OTP sent successfully! Check your email.', 'success');
+                    } else {
+                        showAlert(data.message || 'Failed to send OTP', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('OTP send error:', err);
+                    showAlert('Network error. Please try again.', 'error');
+                })
+                .finally(() => {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify Email';
+                });
+            }
+
+            // Open OTP modal
+            function openOTPModal(email, expiresIn) {
+                otpEmailDisplay.textContent = email;
+                otpInput.value = '';
+                otpModal.style.display = 'flex';
+                otpInput.focus();
+                
+                // Start timer
+                expiryTime = Date.now() + (expiresIn * 1000);
+                startTimer();
+            }
+
+            // Close OTP modal
+            function closeOTPModal() {
+                otpModal.style.display = 'none';
+                clearInterval(timerInterval);
+                otpAlert.style.display = 'none';
+            }
+
+            // Start countdown timer
+            function startTimer() {
+                clearInterval(timerInterval);
+                
+                timerInterval = setInterval(() => {
+                    const remaining = Math.max(0, expiryTime - Date.now());
+                    const minutes = Math.floor(remaining / 60000);
+                    const seconds = Math.floor((remaining % 60000) / 1000);
+                    
+                    otpTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (remaining <= 0) {
+                        clearInterval(timerInterval);
+                        otpTimer.textContent = 'Expired';
+                        showModalAlert('OTP expired. Please request a new one.', 'error');
+                    }
+                }, 1000);
+            }
+
+            // Verify OTP
+            function verifyOTP() {
+                const email = emailInput.value.trim();
+                const otp = otpInput.value.trim();
+
+                if (!otp || otp.length !== 6) {
+                    showModalAlert('Please enter a 6-digit code', 'error');
+                    return;
+                }
+
+                otpVerifyBtn.disabled = true;
+                otpVerifyBtn.textContent = 'Verifying...';
+
+                fetch('{{ route("otp.verify") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email, otp })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showModalAlert('Email verified successfully!', 'success');
+                        setTimeout(() => {
+                            closeOTPModal();
+                            showVerifiedState();
+                            showAlert('Email verified successfully!', 'success');
+                        }, 1500);
+                    } else {
+                        showModalAlert(data.message || 'Invalid OTP code', 'error');
+                        otpInput.value = '';
+                        otpInput.focus();
+                    }
+                })
+                .catch(err => {
+                    console.error('OTP verify error:', err);
+                    showModalAlert('Network error. Please try again.', 'error');
+                })
+                .finally(() => {
+                    otpVerifyBtn.disabled = false;
+                    otpVerifyBtn.textContent = 'Verify Code';
+                });
+            }
+
+            // Resend OTP
+            function resendOTP() {
+                const email = emailInput.value.trim();
+                
+                otpResendBtn.disabled = true;
+                otpResendBtn.textContent = 'Sending...';
+
+                fetch('{{ route("otp.resend") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showModalAlert('New OTP sent to your email!', 'success');
+                        expiryTime = Date.now() + ((data.expires_in || 600) * 1000);
+                        startTimer();
+                        otpInput.value = '';
+                        otpInput.focus();
+                    } else {
+                        showModalAlert(data.message || 'Failed to resend OTP', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('OTP resend error:', err);
+                    showModalAlert('Network error. Please try again.', 'error');
+                })
+                .finally(() => {
+                    otpResendBtn.disabled = false;
+                    otpResendBtn.textContent = 'Resend';
+                });
+            }
+
+            // Show alert in main page
+            function showAlert(message, type) {
+                if (window.toastr) {
+                    toastr[type === 'error' ? 'error' : 'success'](message);
+                } else {
+                    alert(message);
+                }
+            }
+
+            // Show alert in modal
+            function showModalAlert(message, type) {
+                otpAlert.textContent = message;
+                otpAlert.style.display = 'block';
+                otpAlert.style.backgroundColor = type === 'error' ? '#fee2e2' : '#d1fae5';
+                otpAlert.style.color = type === 'error' ? '#991b1b' : '#065f46';
+                otpAlert.style.borderLeft = `4px solid ${type === 'error' ? '#dc2626' : '#10b981'}`;
+            }
+
+            // Event listeners
+            verifyBtn.addEventListener('click', sendOTP);
+            otpVerifyBtn.addEventListener('click', verifyOTP);
+            otpCancelBtn.addEventListener('click', closeOTPModal);
+            otpResendBtn.addEventListener('click', resendOTP);
+
+            // Allow Enter key to verify
+            otpInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    verifyOTP();
+                }
+            });
+
+            // Only allow numbers in OTP input
+            otpInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && otpModal.style.display === 'flex') {
+                    closeOTPModal();
+                }
+            });
+
+            // Prevent form submission if email not verified on step 1
+            document.getElementById('applicationForm').addEventListener('submit', function(e) {
+                if (!isEmailVerified && currentStep === 1) {
+                    e.preventDefault();
+                    showAlert('Please verify your email before continuing', 'error');
+                    emailInput.focus();
+                    emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        })();
     </script>
 @endsection
