@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApplyPageController;
 use App\Http\Controllers\OtpVerificationController;
+use Rinvex\Country\CountryLoader;
 use Illuminate\Support\Facades\Route;
 
 // Public landing page; all other web routes removed per request.
@@ -11,7 +12,7 @@ Route::get('/apply/success', [ApplyPageController::class, 'success'])->name('app
 
 // Phone country codes
 Route::get('/countries/phone-codes', function () {
-    $countries = collect(countries())->map(function ($country) {
+    $countries = collect(CountryLoader::countries())->map(function ($country) {
         return [
             'code' => $country['iso_3166_1_alpha2'],
             'name' => $country['name'],
