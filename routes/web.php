@@ -20,9 +20,9 @@ Route::get('/countries/phone-codes', function () {
             'emoji' => $country['emoji'] ?? '🌍',
         ];
     })->filter(fn($c) => $c['calling_code'] !== null)
-      ->sortBy(fn($c) => $c['name'] === 'United Kingdom' ? '0' : '1' . $c['name'])
-      ->values();
-    
+        ->sortBy(fn($c) => $c['name'] === 'United Kingdom' ? '0' : '1' . $c['name'])
+        ->values();
+
     return response()->json($countries);
 })->name('countries.phone-codes');
 
@@ -32,4 +32,9 @@ Route::prefix('otp')->group(function () {
     Route::post('/verify', [OtpVerificationController::class, 'verifyOtp'])->name('otp.verify');
     Route::post('/resend', [OtpVerificationController::class, 'resendOtp'])->name('otp.resend');
     Route::post('/check', [OtpVerificationController::class, 'checkVerification'])->name('otp.check');
+});
+
+route::get('test', function () {
+
+    return phpinfo();
 });
